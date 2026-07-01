@@ -77,6 +77,22 @@ void matmul_transposed(const float* A, const float* Bt, float* C, int N) {
 // ---------------------------------------------------------------------------
 void matmul_tiled(const float* A, const float* B, float* C, int N, int tile) {
     // TODO: implement.
+    for(int ii = 0; ii < N; ii += tile){
+        for(int jj = 0; jj < N; jj += tile){
+            for(int kk = 0; kk < N; kk += tile){
+                int i_max = std::min(ii + tile, N);
+                int j_max = std::min(jj + tile, N);
+                int k_max = std::min(kk + tile, N);
+                for(int i = ii; i < i_max; i++){
+                    for(int j = jj; j < j_max; j++){
+                        for(int k = kk; k < k_max; k++){
+                            C[i * N + j] += A[i * N + k] * B[k * N + j]; 
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

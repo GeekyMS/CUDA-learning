@@ -22,6 +22,12 @@
 // ---------------------------------------------------------------------------
 void scan_sequential(const float* in, float* out, int N) {
     // TODO: implement.
+    float res = 0.0f;
+
+    for(int i = 0; i < N; i++){
+        res += in[i];
+        out[i] = res;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +64,7 @@ void scan_parallel_blelloch(const float* in, float* out, int N) {
 // ---------------------------------------------------------------------------
 void scan_std(const float* in, float* out, int N) {
     // TODO: implement using std::inclusive_scan.
+    std::inclusive_scan(in, N,out);
 }
 
 // ---------------------------------------------------------------------------

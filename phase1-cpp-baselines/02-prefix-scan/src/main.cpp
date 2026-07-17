@@ -51,8 +51,73 @@ void scan_sequential(const float* in, float* out, int N) {
 // the independent node updates at that level (there are N/2^(d+1) independent
 // updates at level d — split them across a fixed pool of threads).
 // ---------------------------------------------------------------------------
+int next_pow2(int N) {
+    int p = 1;
+    while (p < N) p <<= 1;
+    return p;
+}
+void upsweep(float* arr, int N){
+    int levels = static_cast<int>(std::log2(N));
+    for (int d = 0; d < levels; d++){
+        int stride = 2 << d;
+        int num_threads = std::thread::hardware_concurrency();  // e.g. 8 on your machine
+        // for each level d of the upsweep:
+        int num_updates = N / stride;   // number of independent (i, i+stride/2, i+stride) triples at this level
+        int chunk = (num_updates + num_threads - 1) / num_threads;  // ceil division
+
+        std::vector<std::thread> threads;
+        for (int t = 0; t < num_threads; t++) {
+            int start = t * chunk;
+            int end = std::min(start + chunk, num_updates);
+            if (start >= end) continue;   // fewer updates than threads at small levels — skip empty ranges
+            threads.emplace_back([&, start, end, stride]() {
+                for (int u = start; u < end; u++) {
+                    int i = u * stride;
+                    arr[i + stride - 1] += arr[i + stride/2 - 1];
+                }
+            });
+        }
+        for (auto& th: threads) th.join();
+    }
+}
+
+void downsweep(float* arr, int N){
+    arr[N-1] = 0;
+    int level = std::log2(N) - 1;
+    for(int d = level; d >= 0; d--){
+        int stride = 2 << d;
+        int num_threads = std::thread::hardware_concurrency();  // e.g. 8 on your machine
+        int num_updates = N / stride;   // number of independent (i, i+stride/2, i+stride) triples at this level
+        int chunk = (num_updates + num_threads - 1) / num_threads;
+
+        std::vector<std::thread> threads;
+        for (int t = 0; t < num_threads; t++){
+            int start = t * chunk;
+            int end = std::min(start + chunk, num_updates);
+            if (start >= end) continue;
+            threads.emplace_back([&, start, end, stride]() {
+                for (int u = start; u < end; u++) {
+                    int i = u * stride;
+                    int right = i + stride -1;
+                    int left = i + stride/2 - 1;
+                    float temp = arr[left];
+                    arr[left] = arr[right];
+                    arr[right] += temp;
+                }
+            });
+        }
+        for (auto& th: threads) th.join();
+    }
+}
 void scan_parallel_blelloch(const float* in, float* out, int N) {
     // TODO: implement.
+    int next = next_pow2(N);
+    std::vector<float> buf(next, 0.0f);
+    std::copy(in, in + N, buf.data()); 
+    upsweep(buf.data(), next);
+    downsweep(buf.data(), next);
+    for (int i = 0; i < N; i++) buf[i] += in[i];
+    std::copy(buf.begin(), buf.begin() + N, out);
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +129,7 @@ void scan_parallel_blelloch(const float* in, float* out, int N) {
 // ---------------------------------------------------------------------------
 void scan_std(const float* in, float* out, int N) {
     // TODO: implement using std::inclusive_scan.
-    std::inclusive_scan(in, N,out);
+    std::inclusive_scan(in, in + N,out);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 # Build artifacts
 matmul
 prefix_scan
+imgconv
 *.o
 *.out
+output.pgm

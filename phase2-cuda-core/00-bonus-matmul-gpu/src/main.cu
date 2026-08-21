@@ -80,6 +80,41 @@ __global__ void matmul_naive_gpu(const float* A, const float* B, float* C, int N
 }
 
 // ---------------------------------------------------------------------------
+// v2 — Shared-memory tiled GPU matmul
+//
+// matmul_naive_gpu above is already ~194x faster than CPU naive purely from
+// having ~1M threads in flight, but it's still wasteful: every block that
+// covers a given row-band of A re-reads that entire row from slow global
+// memory independently, once per k-step, and likewise every block covering
+// a given col-band of B re-reads that column — a lot of redundant global
+// memory traffic across blocks (see RESULTS.md "Memory access pattern"
+// section for the full trace of who reads what).
+//
+// The fix: have each block cooperatively load one TILE_SIZE x TILE_SIZE tile
+// of A and one tile of B into __shared__ memory (fast, on-chip, private to
+// the block) ONCE, __syncthreads() as a barrier so every thread in the block
+// waits until the whole tile is loaded, then have every thread in the block
+// compute its partial dot-product sum using only that shared-memory tile —
+// no global memory traffic during that inner computation at all. Slide the
+// tile across the K dimension (a loop over tiles), accumulating partial
+// sums, until the full dot product is complete.
+//
+// This directly mirrors CPU matmul_tiled from Project 1 — same idea (shrink
+// the working set so it fits in a fast memory tier and gets reused many
+// times before eviction), just with __shared__ memory as the fast tier
+// instead of L1/L2 cache, and explicit cooperative loading (CPU tiling got
+// cache reuse "for free" from hardware; GPU shared memory requires you to
+// explicitly copy data into it and synchronize before reading it back).
+// ---------------------------------------------------------------------------
+// #define TILE_SIZE 16
+// __global__ void matmul_tiled_gpu(const float* A, const float* B, float* C, int N) {
+//     __shared__ float tileA[TILE_SIZE][TILE_SIZE];
+//     __shared__ float tileB[TILE_SIZE][TILE_SIZE];
+//     // TODO: cooperative load into tileA/tileB, __syncthreads(),
+//     // accumulate partial sums per tile, slide across K, repeat.
+// }
+
+// ---------------------------------------------------------------------------
 // Support code below.
 // ---------------------------------------------------------------------------
 

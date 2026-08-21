@@ -9,7 +9,7 @@
 
 # Run from the project root: sbatch slurm/run.sbatch
 
-module load cuda   # VERIFY: run `module avail cuda` and pin an exact version, e.g. `module load cuda/12.4`
+module load cuda/13.1
 
 # Build directly on the GPU node so `ARCH=native` (the Makefile default)
 # can correctly detect this node's actual GPU.

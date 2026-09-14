@@ -9,9 +9,11 @@ Compiler: nvcc (version), -arch=sm_XX -O2
 
 | Version | N | Time (ms) | GFLOP/s | Speedup vs v1 |
 |---------|---|-----------|---------|---------------|
-| v1 naive | 1024 | — | — | 1.0x |
-| v2 transposed B | 1024 | — | — | — |
-| v3 tiled | 1024 | — | — | — |
+| v1 naive | 1024 | 972.18 | 2.21 | 1.0x |
+| v2 transposed B | 1024 | 630.24 | 3.41 | 1.5x |
+| v3 tiled (tile=16, best) | 1024 | 343.06 | 6.26 | 2.8x |
+| GPU naive (bonus, Phase 2 preview) | 1024 | 5.00 | 429.11 | ~194x |
+| GPU best (shared-memory tiled) | 1024 | — | — | — |
 
 ---
 

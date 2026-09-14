@@ -11,11 +11,12 @@ architecture is supported by whichever CUDA module is loaded).
 Correctness: max|gpu-cpu| = 1.90735e-05 (expect < 1e-2)
 ```
 
-Passes, well under tolerance. The diff is larger than the pure CPU-vs-CPU
-diffs from Projects 1-2 (`~1e-6` to `~1e-5` there), most likely because GPUs
-commonly fuse multiply-add into a single FMA instruction with different
-intermediate rounding than the CPU's separate multiply-then-add step, on top
-of the usual summation-order non-associativity effect (see
+Passes, well under tolerance. I noticed the diff is larger than the pure
+CPU-vs-CPU diffs from Projects 1-2 (`~1e-6` to `~1e-5` there) and had to
+think about why — most likely GPUs commonly fuse multiply-add into a single
+FMA instruction with different intermediate rounding than the CPU's separate
+multiply-then-add step, on top of the usual summation-order non-associativity
+effect I already ran into in Project 1 (see
 [floating-point-nonassociativity.md](../../additional-learnings/floating-point-nonassociativity.md)).
 
 ## Benchmark (N=1024)
@@ -29,25 +30,30 @@ of the usual summation-order non-associativity effect (see
 
 The naive, unoptimized GPU kernel — no shared memory, no tiling, just one
 thread per output element — beats the *best hand-tuned CPU version* by ~69x,
-and beats CPU naive by ~194x.
+and beats CPU naive by ~194x. Genuinely surprised me the first time I saw
+this number; wanted to actually understand why before chalking it up to
+"GPUs are just fast."
 
 ## Why a "naive" GPU kernel already crushes hand-tuned CPU code
 
-All the CPU-side tiling work in Project 1 existed to work around a handful
-of cores and a small cache. The GPU sidesteps that problem differently: it
-launches roughly a million threads (`1024x1024`), each doing its own
-independent dot product, and the sheer volume of concurrent work keeps the
-memory system saturated even though any single thread's own access pattern
-(`B[k*N+col]`, strided as `k` increases — the exact "bad" pattern that made
-CPU `matmul_naive` slow) is just as cache-unfriendly per-thread as the CPU
-version. Latency doesn't need to disappear, it just needs to be hidden behind
-other threads' useful work, and there's enough concurrent work here to do
-that (see [why-does-blelloch-need-gpu-hardware.md](../../additional-learnings/why-does-blelloch-need-gpu-hardware.md)
-for the same latency-hiding argument in the scan-vs-thread-overhead context).
+All the CPU-side tiling work I did in Project 1 existed to work around a
+handful of cores and a small cache. The GPU sidesteps that problem
+differently: it launches roughly a million threads (`1024x1024`), each doing
+its own independent dot product, and the sheer volume of concurrent work
+keeps the memory system saturated even though any single thread's own access
+pattern (`B[k*N+col]`, strided as `k` increases — the exact "bad" pattern
+that made CPU `matmul_naive` slow) is just as cache-unfriendly per-thread as
+the CPU version. Latency doesn't need to disappear, it just needs to be
+hidden behind other threads' useful work, and there's enough concurrent work
+here to do that — same latency-hiding idea I worked out in
+[why-does-blelloch-need-gpu-hardware.md](../../additional-learnings/why-does-blelloch-need-gpu-hardware.md)
+for the scan-vs-thread-overhead case.
 
 ## Memory access pattern — who reads what, and how much sharing happens
 
-With `blockDim = 16x16` (256 threads/block, 4096 blocks total for N=1024):
+Worked this out by hand to make sure I actually understood what the kernel
+was doing, not just that it was fast. With `blockDim = 16x16` (256
+threads/block, 4096 blocks total for N=1024):
 
 - **`C[row*N+col]`** — written by exactly one thread each. No contention.
 - **`A[row*N+k]`** — depends only on `row` and `k`, not `col`. Every thread
@@ -79,8 +85,9 @@ That last point — redundant re-fetching of the same `A`/`B` data across
 blocks — is exactly what a **tiled, shared-memory GPU kernel** eliminates:
 each block cooperatively loads a tile of `A` and `B` into fast on-chip shared
 memory once, then every thread in that block reuses it from shared memory
-instead of re-hitting global memory. A stubbed-out `matmul_tiled_gpu` kernel
-with a full TODO writeup is in `src/main.cu`, deliberately **not implemented
-or wired into `main()` yet** — deferred until the formal Phase 2 sequence
-reaches shared memory (this bonus project was an early jump ahead of Project
-4, not meant to front-run the whole phase).
+instead of re-hitting global memory. I stubbed out a `matmul_tiled_gpu`
+kernel with a full TODO writeup in `src/main.cu`, but deliberately **haven't
+implemented or wired it into `main()` yet** — holding off until the formal
+Phase 2 sequence reaches shared memory (this bonus project was me jumping
+ahead of Project 4 early because I had cluster access, not meant to
+front-run the whole phase).

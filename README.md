@@ -23,8 +23,8 @@ what's done vs. planned.
 | Project | Problem Size | CPU Baseline | GPU Naive | GPU Best | Speedup |
 |---------|-------------|--------------|-----------|----------|---------|
 | 01 Matmul | N=1024 | 343.06 ms (tiled, best) | 5.00 ms | — | ~69x |
-| 02 Prefix Scan | N=1M | — | — | — | — |
-| 03 Image Convolution | 1024×1024, K=15 | — | — | — | — |
+| 02 Prefix Scan | N=1M | 1.34 ms (sequential, fastest — see note) | — | — | — |
+| 03 Image Convolution | 1024×1024, K=15 | 11.64 ms (separable, best) | — | — | ~16.3x vs naive |
 | 04 SAXPY | N=100M | — | — | — | — |
 | 05 Histogram | N=10M | — | — | — | — |
 | 06 Heat Diffusion | 2048×2048 | — | — | — | — |
@@ -33,10 +33,18 @@ what's done vs. planned.
 | 09 SpMV | varies | — | — | — | — |
 | 10 Softmax | seq=8192 | — | — | — | — |
 
+Note on Project 02: the parallel (Blelloch) CPU version is *slower* than plain
+sequential at every N tested — thread-spawn/join overhead and strided memory
+access dominate on CPU hardware. See
+[prefix-scan RESULTS.md](phase1-cpp-baselines/02-prefix-scan/RESULTS.md) and
+[why-does-blelloch-need-gpu-hardware.md](additional-learnings/why-does-blelloch-need-gpu-hardware.md)
+for why this flips once it runs on a GPU.
+
 Full results: [benchmarks/results.md](benchmarks/results.md)
 
 ## Hardware
 
-GPU: (fill in after `nvidia-smi`)  
-CUDA: (fill in after `nvcc --version`)  
-CPU: (fill in)
+CPU (Phase 1 baselines): Apple M3 (local Mac)  
+GPU (Phase 2 bonus): Pascal-class NVIDIA GPU on UMass's Unity cluster
+(`-arch=native` resolved to `compute_61`)  
+CUDA: 13.1

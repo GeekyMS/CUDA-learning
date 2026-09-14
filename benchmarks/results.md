@@ -1,7 +1,8 @@
 # Benchmark Results
 
-Hardware: (fill in: GPU model, VRAM, peak BW)  
-Compiler: nvcc (version), -arch=sm_XX -O2  
+Hardware: Apple M3 (CPU baselines, Phase 1); Pascal-class NVIDIA GPU on UMass's
+Unity cluster, `-arch=native` resolved to `compute_61` (Phase 2 bonus)  
+Compiler: nvcc, CUDA 13.1, `-O3 -arch=native`  
 
 ---
 
@@ -21,8 +22,17 @@ Compiler: nvcc (version), -arch=sm_XX -O2
 
 | Version | N | Time (ms) | GB/s | Speedup vs v1 |
 |---------|---|-----------|------|---------------|
-| v1 sequential | 1M | — | — | 1.0x |
-| v2 parallel (Blelloch) | 1M | — | — | — |
+| v1 sequential | 1M | 1.34 | — | 1.0x |
+| v2 parallel (Blelloch) | 1M | 6.07 | — | 0.22x |
+| v3 std::inclusive_scan | 1M | 1.95 | — | 0.69x |
+| v1 sequential | 100M | 84.08 | — | 1.0x |
+| v2 parallel (Blelloch) | 100M | 311.52 | — | 0.27x |
+| v3 std::inclusive_scan | 100M | 73.01 | — | 1.15x |
+
+Blelloch (parallel) is slower than sequential at both sizes — see
+[prefix-scan RESULTS.md](../phase1-cpp-baselines/02-prefix-scan/RESULTS.md)
+for why (thread-spawn/join overhead and strided memory access dominate on
+CPU hardware; the same algorithm wins once it runs on a GPU).
 
 ---
 
@@ -30,8 +40,8 @@ Compiler: nvcc (version), -arch=sm_XX -O2
 
 | Version | Image | Kernel | Time (ms) | Speedup vs v1 |
 |---------|-------|--------|-----------|---------------|
-| v1 naive | 1024×1024 | K=15 | — | 1.0x |
-| v2 separable | 1024×1024 | K=15 | — | — |
+| v1 naive | 1024×1024 | K=15 | 189.31 | 1.0x |
+| v2 separable | 1024×1024 | K=15 | 11.64 | 16.3x |
 
 ---
 

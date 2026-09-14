@@ -33,12 +33,13 @@ what's done vs. planned.
 | 09 SpMV | varies | — | — | — | — |
 | 10 Softmax | seq=8192 | — | — | — | — |
 
-Note on Project 02: the parallel (Blelloch) CPU version is *slower* than plain
-sequential at every N tested — thread-spawn/join overhead and strided memory
-access dominate on CPU hardware. See
+Note on Project 02: I found the parallel (Blelloch) CPU version is *slower*
+than plain sequential at every N I tested — thread-spawn/join overhead and
+strided memory access dominate on CPU hardware. Wasn't what I expected going
+in; wrote up why in
 [prefix-scan RESULTS.md](phase1-cpp-baselines/02-prefix-scan/RESULTS.md) and
-[why-does-blelloch-need-gpu-hardware.md](additional-learnings/why-does-blelloch-need-gpu-hardware.md)
-for why this flips once it runs on a GPU.
+[why-does-blelloch-need-gpu-hardware.md](additional-learnings/why-does-blelloch-need-gpu-hardware.md),
+and why I think it flips once it runs on a GPU.
 
 Full results: [benchmarks/results.md](benchmarks/results.md)
 
